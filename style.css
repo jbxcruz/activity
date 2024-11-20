@@ -46,8 +46,9 @@ body {
 .top { transform: rotateX(90deg) translateZ(100px); }
 .bottom { transform: rotateX(-90deg) translateZ(100px); }
 
-/* Wireframe effect: make sides look like wireframes */
+/* Wireframe: Transparent faces with visible outlines */
 .wireframe .side {
-  background-color: transparent;
-  border: 1px solid #000;
+  background-color: transparent !important; /* Transparent faces */
+  border: 1px solid black; /* Black outlines */
 }
+
