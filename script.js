@@ -1,5 +1,4 @@
 
-
 const cube = document.getElementById('cube');
 let cubeSize = 200; // Initial cube size (in pixels)
 let rotateX = -30;
@@ -8,9 +7,6 @@ let isMouseDown = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
 let isSpinning = false; // Whether the cube is spinning or not
-
-// Smooth transformation for animations
-cube.style.transition = 'transform 0.1s ease-out';
 
 // Initial cube properties
 let cubeProperties = {
@@ -37,56 +33,56 @@ window.addEventListener('mouseup', () => {
 window.addEventListener('mousemove', (event) => {
   if (!isMouseDown) return;
 
+  // Calculate the difference between current and previous mouse position
   const deltaX = event.clientX - lastMouseX;
   const deltaY = event.clientY - lastMouseY;
 
+  // Update rotation angles gradually based on mouse movement
   rotateY += deltaX * cubeProperties.rotateSpeed;
   rotateX -= deltaY * cubeProperties.rotateSpeed;
 
+  // Apply smooth rotation to the cube
   cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
 
+  // Update last mouse position for next calculation
   lastMouseX = event.clientX;
   lastMouseY = event.clientY;
 });
 
 // Gradually resize the cube on scroll without a specific limit
 window.addEventListener('wheel', (event) => {
-  const zoomSpeed = 0.1; 
-  cubeSize *= event.deltaY > 0 ? (1 + zoomSpeed) : (1 - zoomSpeed);
+  if (event.deltaY > 0) {
+    cubeSize *= 1.05; // Gradually increase the size
+  } else {
+    cubeSize *= 0.95; // Gradually decrease the size
+  }
 
+  // Apply transformation based on updated size
   cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
 });
 
-// Prevent zooming on touch devices
-window.addEventListener(
-  'touchstart',
-  (event) => {
-    if (event.touches.length > 1) {
-      event.preventDefault(); 
-    }
-  },
-  { passive: false }
-);
+// Prevent zooming on touch devices (optional for mobile)
+window.addEventListener('touchstart', (event) => {
+  if (event.touches.length > 1) {
+    event.preventDefault(); // Prevent multi-touch zoom
+  }
+}, { passive: false });
 
-window.addEventListener(
-  'touchmove',
-  (event) => {
-    if (event.touches.length > 1) {
-      event.preventDefault(); 
-    }
-  },
-  { passive: false }
-);
+window.addEventListener('touchmove', (event) => {
+  if (event.touches.length > 1) {
+    event.preventDefault(); // Prevent pinch-to-zoom
+  }
+}, { passive: false });
 
 // Create a dat.GUI instance and add controls
 const gui = new dat.GUI();
 
-// Elevation control
+// Elevation control (Y-axis movement)
 gui.add(cubeProperties, 'elevation', -200, 200).name('Elevation').onChange(() => {
   cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
 });
 
-// Visibility control
+// Visibility control (Show/Hide cube)
 gui.add(cubeProperties, 'visibility').name('Visibility').onChange(() => {
   updateCubeVisibilityAndWireframe();
 });
@@ -96,53 +92,62 @@ gui.add(cubeProperties, 'wireframe').name('Wireframe').onChange(() => {
   updateCubeVisibilityAndWireframe();
 });
 
-// Color control
+// Color control (change the cube color)
 gui.addColor(cubeProperties, 'color').name('Color').onChange(() => {
   updateCubeVisibilityAndWireframe();
 });
 
-// Spin button
-gui.add(
-  {
-    spin: function () {
-      if (!isSpinning) {
-        isSpinning = true;
-        animateCube();
-        setTimeout(() => {
-          isSpinning = false;
-        }, 2000); 
-      }
-    },
-  },
-  'spin'
-).name('Spin');
+// Spin button (now as a button that spins for a while)
+gui.add({ spin: function() {
+  if (!isSpinning) {
+    isSpinning = true; // Start spinning
+    animateCube();
+    setTimeout(() => {
+      isSpinning = false; // Stop spinning after 2 seconds
+    }, 2000); // Spin for 2 seconds
+  }
+}}, 'spin').name('Spin');
 
-// Animate cube rotation
+// Function to animate the cube's rotation if spin is enabled
 function animateCube() {
   if (isSpinning) {
-    rotateY += 1;
+    rotateY += 1; // Adjust the spin speed by changing this value
     cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
     requestAnimationFrame(animateCube);
   }
 }
 
-// Update cube visibility and wireframe styles
+// Function to update cube visibility and wireframe styles based on user input
 function updateCubeVisibilityAndWireframe() {
   if (cubeProperties.visibility) {
-    cube.style.display = 'block';
+    cube.style.display = 'block'; // Ensure the cube is visible
+    cube.style.opacity = '1'; // Smooth fade-in for visibility
+
     if (cubeProperties.wireframe) {
+      // Add wireframe style: visible outlines, transparent faces
       cube.classList.add('wireframe');
-      cube.style.backgroundColor = 'transparent';
+      const sides = cube.querySelectorAll('.side');
+      sides.forEach(side => {
+        side.style.backgroundColor = 'transparent'; // Transparent faces
+        side.style.border = '1px solid black'; // Add visible borders
+      });
     } else {
       cube.classList.remove('wireframe');
-      cube.style.backgroundColor = cubeProperties.color;
+      const sides = cube.querySelectorAll('.side');
+      sides.forEach(side => {
+        side.style.backgroundColor = cubeProperties.color; // Restore face color
+        side.style.border = 'none'; // Remove borders
+      });
     }
   } else {
-    cube.style.display = 'none';
+    cube.style.opacity = '0'; // Smooth fade-out
+    setTimeout(() => {
+      cube.style.display = 'none'; // Completely hide cube
+    }, 500); // Match fade-out duration
   }
 }
 
-// Reset rotation on mouse leave
+// Reset rotation angle if the mouse leaves the window
 window.addEventListener('mouseleave', () => {
   rotateX = -30;
   rotateY = 30;
