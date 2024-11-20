@@ -1,170 +1,143 @@
-// Set up the basic Three.js scene
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight); // Make the renderer full-screen
-document.body.appendChild(renderer.domElement);
-
-// Function to handle window resizing
-function onWindowResize() {
-  // Update renderer size
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  
-  // Update camera aspect ratio
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-}
-
-// Add an event listener for window resizing
-window.addEventListener('resize', onWindowResize);
 
 
-// Create the cube geometry with diagonal lines
-let cubeSize = 200; // Initial cube size
-let cubeColor = '#ff0000'; // Default color
-let isSpinning = false; // Spin flag
 
-// Create a box geometry and add diagonal lines to each face
-const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+const cube = document.getElementById('cube');
+let cubeSize = 200; // Initial cube size (in pixels)
+let rotateX = -30;
+let rotateY = 30;
+let isMouseDown = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+let isSpinning = false; // Whether the cube is spinning or not
 
-// Create materials for each face of the cube
-const materials = [
-  new THREE.MeshBasicMaterial({ color: cubeColor }),  // Right
-  new THREE.MeshBasicMaterial({ color: cubeColor }),  // Left
-  new THREE.MeshBasicMaterial({ color: cubeColor }),  // Top
-  new THREE.MeshBasicMaterial({ color: cubeColor }),  // Bottom
-  new THREE.MeshBasicMaterial({ color: cubeColor }),  // Front
-  new THREE.MeshBasicMaterial({ color: cubeColor })   // Back
-];
+// Initial cube properties
+let cubeProperties = {
+  elevation: 0, // Elevation of the cube (vertical position)
+  visibility: true, // Visibility of the cube
+  wireframe: false, // Whether to display wireframe
+  color: '#ff0000', // Color of the cube
+  rotateSpeed: 0.2, // Speed of user-controlled rotation
+};
 
-const cube = new THREE.Mesh(geometry, materials);
-scene.add(cube);
+// Mouse down event to start dragging
+window.addEventListener('mousedown', (event) => {
+  isMouseDown = true;
+  lastMouseX = event.clientX;
+  lastMouseY = event.clientY;
+});
 
-// Create lines for each face of the cube (diagonal lines)
-const lineMaterial = new THREE.LineBasicMaterial({ color: '#000000' });
-const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-  new THREE.Vector3(-cubeSize / 2, -cubeSize / 2, 0),
-  new THREE.Vector3(cubeSize / 2, cubeSize / 2, 0)
-]);
+// Mouse up event to stop dragging
+window.addEventListener('mouseup', () => {
+  isMouseDown = false;
+});
 
-const lines = [
-  new THREE.Line(lineGeometry, lineMaterial), // Front
-  new THREE.Line(lineGeometry, lineMaterial), // Back
-  new THREE.Line(lineGeometry, lineMaterial), // Left
-  new THREE.Line(lineGeometry, lineMaterial), // Right
-  new THREE.Line(lineGeometry, lineMaterial), // Top
-  new THREE.Line(lineGeometry, lineMaterial), // Bottom
-];
+// Mouse move event to rotate the cube smoothly
+window.addEventListener('mousemove', (event) => {
+  if (!isMouseDown) return;
 
-lines.forEach(line => scene.add(line));
+  // Calculate the difference between current and previous mouse position
+  const deltaX = event.clientX - lastMouseX;
+  const deltaY = event.clientY - lastMouseY;
 
-function animate() {
-  requestAnimationFrame(animate);
-  
-  if (isSpinning) {
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
+  // Update rotation angles gradually based on mouse movement
+  rotateY += deltaX * cubeProperties.rotateSpeed;
+  rotateX -= deltaY * cubeProperties.rotateSpeed;
+
+  // Apply smooth rotation to the cube
+  cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
+
+  // Update last mouse position for next calculation
+  lastMouseX = event.clientX;
+  lastMouseY = event.clientY;
+});
+
+// Gradually resize the cube on scroll without a specific limit
+window.addEventListener('wheel', (event) => {
+  if (event.deltaY > 0) {
+    cubeSize *= 1.05; // Gradually increase the size
+  } else {
+    cubeSize *= 0.95; // Gradually decrease the size
   }
 
-  renderer.render(scene, camera);
-}
+  // Apply transformation based on updated size
+  cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
+});
 
-// Position the camera and render the scene
-camera.position.z = 500;
-animate();
+// Prevent zooming on touch devices (optional for mobile)
+window.addEventListener('touchstart', (event) => {
+  if (event.touches.length > 1) {
+    event.preventDefault(); // Prevent multi-touch zoom
+  }
+}, { passive: false });
+
+window.addEventListener('touchmove', (event) => {
+  if (event.touches.length > 1) {
+    event.preventDefault(); // Prevent pinch-to-zoom
+  }
+}, { passive: false });
 
 // Create a dat.GUI instance and add controls
 const gui = new dat.GUI();
-let cubeProperties = {
-  elevation: 0,
-  visibility: true,
-  wireframe: false,
-  color: '#ff0000',
-  rotateSpeed: 0.2,
-  spin: function() {
-    isSpinning = !isSpinning;
-  },
-};
 
 // Elevation control (Y-axis movement)
 gui.add(cubeProperties, 'elevation', -200, 200).name('Elevation').onChange(() => {
-  cube.position.y = cubeProperties.elevation;
+  cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
 });
 
 // Visibility control (Show/Hide cube)
 gui.add(cubeProperties, 'visibility').name('Visibility').onChange(() => {
-  cube.visible = cubeProperties.visibility;
+  updateCubeVisibilityAndWireframe();
 });
 
-// Wireframe control (display wireframe)
+// Wireframe control
 gui.add(cubeProperties, 'wireframe').name('Wireframe').onChange(() => {
-  if (cubeProperties.wireframe) {
-    // When wireframe is enabled, show only the diagonals (lines)
-    materials.forEach(material => material.wireframe = true);
-    lines.forEach(line => line.visible = true);
-  } else {
-    // When wireframe is disabled, show the full cube faces with color
-    materials.forEach(material => material.wireframe = false);
-    lines.forEach(line => line.visible = false);
-  }
+  updateCubeVisibilityAndWireframe();
 });
 
 // Color control (change the cube color)
 gui.addColor(cubeProperties, 'color').name('Color').onChange(() => {
-  cubeColor = cubeProperties.color;
-  materials.forEach(material => material.color.set(cubeColor));
+  updateCubeVisibilityAndWireframe();
 });
 
-// Spin button (start/stop spinning)
-gui.add(cubeProperties, 'spin').name('Spin');
-
-// Event listener to handle window resizing
-window.addEventListener('resize', () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-});
-
-// Add mouse event listeners for interactive rotation
-let isMouseDown = false;
-let previousMousePosition = { x: 0, y: 0 };
-
-function onMouseDown(event) {
-  isMouseDown = true;
-}
-
-function onMouseUp(event) {
-  isMouseDown = false;
-}
-
-function onMouseMove(event) {
-  if (!isMouseDown) return;
-
-  const deltaX = event.clientX - previousMousePosition.x;
-  const deltaY = event.clientY - previousMousePosition.y;
-
-  cube.rotation.x += deltaY * 0.01;
-  cube.rotation.y += deltaX * 0.01;
-
-  previousMousePosition = { x: event.clientX, y: event.clientY };
-}
-
-// Add event listeners to handle mouse movements
-window.addEventListener('mousedown', onMouseDown);
-window.addEventListener('mouseup', onMouseUp);
-window.addEventListener('mousemove', onMouseMove);
-
-// Add scroll wheel event listener for resizing the cube
-window.addEventListener('wheel', (event) => {
-  const zoomSpeed = 5;
-  if (event.deltaY > 0) {
-    // Scroll down: Decrease the cube size gradually
-    cubeSize = Math.max(10, cubeSize - zoomSpeed); // Prevent size from going negative
-  } else {
-    // Scroll up: Increase the cube size gradually
-    cubeSize = cubeSize + zoomSpeed;
+// Spin button (now as a button that spins for a while)
+gui.add({ spin: function() {
+  if (!isSpinning) {
+    isSpinning = true; // Start spinning
+    animateCube();
+    setTimeout(() => {
+      isSpinning = false; // Stop spinning after 2 seconds
+    }, 2000); // Spin for 2 seconds
   }
+}}, 'spin').name('Spin');
 
-  // Update cube geometry with new size
-  cube.scale.set(cubeSize / 200, cubeSize / 200, cubeSize / 200); // Keep proportions
+// Function to animate the cube's rotation if spin is enabled
+function animateCube() {
+  if (isSpinning) {
+    rotateY += 1; // Adjust the spin speed by changing this value
+    cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
+    requestAnimationFrame(animateCube);
+  }
+}
+
+// Function to update cube visibility and wireframe styles based on user input
+function updateCubeVisibilityAndWireframe() {
+  if (cubeProperties.visibility) {
+    cube.style.display = 'block'; // Make cube visible
+    if (cubeProperties.wireframe) {
+      cube.classList.add('wireframe'); // Add wireframe class (transparent faces with borders)
+      cube.style.backgroundColor = 'transparent'; // Make the cube faces transparent
+    } else {
+      cube.classList.remove('wireframe');
+      cube.style.backgroundColor = cubeProperties.color; // Apply the selected color if not wireframe
+    }
+  } else {
+    cube.style.display = 'none'; // Hide the cube if visibility is false
+  }
+}
+
+// Reset rotation angle if the mouse leaves the window
+window.addEventListener('mouseleave', () => {
+  rotateX = -30;
+  rotateY = 30;
+  cube.style.transform = `scale(${cubeSize / 200}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(${cubeProperties.elevation}px)`;
 });
